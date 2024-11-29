@@ -1,0 +1,110 @@
+<!--Below is a simple impementation of shadow mapping on an instaced static mesh of randomly placed cubes.
+    This may not seam like much, but it is ideal for real time rendering of graphs for example!-->
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three.js Instanced Mesh with Anti-Aliasing</title>
+  <style>
+    body { margin: 0; }
+    canvas { display: block; }
+  </style>
+</head>
+<body>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/0.154.0/three.min.js"></script>
+  <script>
+    // Scene, Camera, Renderer with Antialiasing
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 20, 50);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true }); // Antialiasing enabled
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.shadowMap.enabled = true; // Enable shadows
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+    document.body.appendChild(renderer.domElement);
+
+    // Ground Plane (to receive shadows)
+    const groundGeometry = new THREE.PlaneGeometry(100, 100);
+    const groundMaterial = new THREE.MeshStandardMaterial({ color: 0x808080 });
+    const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+    ground.rotation.x = -Math.PI / 2; // Make it horizontal
+    ground.receiveShadow = true; // Enable receiving shadows
+    scene.add(ground);
+
+    // Directional Light (for shadows)
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(20, 50, 20);
+    light.castShadow = true; // Enable casting shadows
+
+    // Shadow Camera Settings
+    light.shadow.mapSize.width = 2048;
+    light.shadow.mapSize.height = 2048;
+    light.shadow.camera.near = 1;
+    light.shadow.camera.far = 200;
+    light.shadow.camera.left = -50;
+    light.shadow.camera.right = 50;
+    light.shadow.camera.top = 50;
+    light.shadow.camera.bottom = -50;
+    scene.add(light);
+
+    // Optional: Visualize the shadow camera's frustum
+    const shadowHelper = new THREE.CameraHelper(light.shadow.camera);
+    scene.add(shadowHelper);
+
+    // InstancedMesh Setup
+    const geometry = new THREE.BoxGeometry(2, 2, 2); // Box geometry for instances
+    const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 }); // Green material
+    const count = 100; // Number of instances
+
+    const instancedMesh = new THREE.InstancedMesh(geometry, material, count);
+    instancedMesh.castShadow = true; // Allow instances to cast shadows
+	instancedMesh.receiveShadow = true;
+    instancedMesh.frustumCulled = false; // Disable frustum culling for proper shadows
+    scene.add(instancedMesh);
+
+    // Set Instance Positions, Rotations, and Scales
+    const dummy = new THREE.Object3D(); // Reusable dummy object
+    for (let i = 0; i < count; i++) {
+      dummy.position.set(
+        Math.random() * 50 - 25, // Random x position
+        Math.random() * 10 + 1,  // Random y position (above ground)
+        Math.random() * 50 - 25  // Random z position
+      );
+
+      dummy.rotation.set(
+        Math.random() * Math.PI, // Random x rotation
+        Math.random() * Math.PI, // Random y rotation
+        Math.random() * Math.PI  // Random z rotation
+      );
+
+      const scale = Math.random() * 0.5 + 0.5; // Random scale (0.5 to 1)
+      dummy.scale.set(scale, scale, scale);
+
+      dummy.updateMatrix(); // Update the dummy object's transformation matrix
+      instancedMesh.setMatrixAt(i, dummy.matrix); // Apply matrix to the instanced mesh
+    }
+
+    // Animation Loop
+    function animate() {
+      requestAnimationFrame(animate);
+
+      // Rotate the entire instanced mesh for visual effect
+      instancedMesh.rotation.y += 0.01;
+
+      renderer.render(scene, camera);
+    }
+
+    animate();
+
+    // Handle Window Resizing
+    window.addEventListener('resize', () => {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  </script>
+</body>
+</html>
